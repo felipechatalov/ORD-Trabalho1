@@ -3,16 +3,13 @@
 #include <string.h> 
 
 
-
-//---- perguntas
-// char 13 e 10 no final do operacoes.dat
-// como remover, excluir tudo ou deixar 64 bytes nulo
-// oq seria o PED e como deve funcionar
-
-
 #define TAM_MAX_REG 64
 #define DELIM_STR "|"
 #define CMP_CNT 4
+
+typedef struct cabecalho{
+    int ped;
+}cabecalho;
 
 int input(char * str, int size) {
     int i = 0;    
@@ -85,52 +82,61 @@ int verificaPED(){
 
 // --------- operacao de busca------
 int busca(char * key, FILE* file){
-    printf("\n%s", key);
+    printf("\ndentro do busca: %s", key);
 
     int regSize;
     char* possibleKey;
     char buffer[TAM_MAX_REG];
     memset(buffer, 0, TAM_MAX_REG);
 
-
-
-
+    fseek(file, sizeof(cabecalho), SEEK_SET);
     regSize = readRegister(buffer, TAM_MAX_REG, file);
-    printf("\n%s", buffer);
+    // printf("\n%s", buffer);
     possibleKey = strtok(buffer, DELIM_STR);
-    printf("\n%d, %s", strlen(possibleKey), possibleKey);
+    // printf("\n%d, %s", strlen(possibleKey), possibleKey);
+    // printf("\n%d, %s", strlen(key), key);
     memset(buffer, 0, TAM_MAX_REG);
 
 
+    // printf("\n%d, %d", strcmp(key, possibleKey), regSize);
 
     while(strcmp(key, possibleKey) != 0 && regSize != 0){
+        // printf("pinto");
         memset(buffer, 0, TAM_MAX_REG);
         regSize = readRegister(buffer, TAM_MAX_REG, file);
-        printf("\n%d", regSize);
-        printf("\n%s", buffer);
-        possibleKey = strtok(buffer, DELIM_STR);
-        printf("\n%s", possibleKey);
-        printf("\n%d", strcmp(key, possibleKey));
+        // printf("\n%d", regSize);
+        // printf("\n%s", buffer);
+        if (regSize != 0){
+            possibleKey = strtok(buffer, DELIM_STR);
+        }
+        // printf("\npossible %s", possibleKey);
+        // printf("\nregsize %d", regSize);
+        // printf("\nstrcmp %d", strcmp(key, possibleKey));
     }
     if (strcmp(key, possibleKey) == 0){
         printf("\nachou: %s, %s", key, possibleKey);
+        return ftell(file)/TAM_MAX_REG -1;
+
     }
     else{
         printf("\nnao achou");
+        return -1;
     }
 
 
-    return ftell(file)/TAM_MAX_REG -1;
 }
 int consulta(char * key, FILE* file){
     char buffer[TAM_MAX_REG];
     memset(buffer, 0, TAM_MAX_REG);
 
     int rrn = busca(key, file);
-
-    fseek(file, rrn*TAM_MAX_REG, SEEK_SET);
+    if (rrn == -1){
+        printf("\nNao encontrei nadaa");
+        return 0;
+    }
+    fseek(file, rrn*TAM_MAX_REG + sizeof(cabecalho), SEEK_SET);
     readRegister(buffer, TAM_MAX_REG, file);
-    printf("\n%s  (RRN = %d - byte-offset %d)", buffer, rrn, rrn*TAM_MAX_REG);
+    printf("\n%s  (RRN = %d - byte-offset %d)", buffer, rrn, rrn*TAM_MAX_REG + sizeof(cabecalho));
     // byteoffset = rrn * TAM_MAX_REG;
 }
 
@@ -185,7 +191,9 @@ int importacao(char * arq){
     int conta_reg, conta_campo;
     char *campo, *campo2;
     short comp_reg, currentReg;
-    char buffer[TAM_MAX_REG], bufferDados[TAM_MAX_REG];
+    cabecalho cabeca;
+    cabeca.ped = -1;
+    char buffer[TAM_MAX_REG], bufferCabecalho[sizeof(cabecalho)];
     memset(buffer, 0, TAM_MAX_REG);
 
     if ((entrada = fopen(arq, "rb")) == NULL) {
@@ -210,9 +218,13 @@ int importacao(char * arq){
 
     //-----metodo 2----
 
+    printf("\n%d", cabeca.ped);
     comp_reg = readRegister(buffer, TAM_MAX_REG, entrada);
     printf("\n%d,   %s", comp_reg, buffer);
-
+    // c = i +'0';
+    // char * temp = cabeca.ped + '0';
+    sprintf(bufferCabecalho, "%d", cabeca.ped);
+    writeRegister(bufferCabecalho, sizeof(cabecalho), dadosPtr);
     do{
         writeRegister(buffer, TAM_MAX_REG, dadosPtr);
         memset(buffer, 0, TAM_MAX_REG);
@@ -244,28 +256,32 @@ int executa_operacoes(char * arq){
         exit(EXIT_FAILURE);
     }
 
+    short comp_reg = strlen(fgets(buffer, TAM_MAX_REG+2, entrada));
+    while(comp_reg != 0){
+        printf("\n%s", buffer);
 
-    fgets(buffer, 66, entrada);
+        if (buffer[strlen(buffer)-1] == 10){
+            buffer[strlen(buffer)-1] = 0;
+        }
+        if (buffer[strlen(buffer)-1] == 13){
+            buffer[strlen(buffer)-1] = 0;
+        }
 
-    if (buffer[strlen(buffer)-1] == 10){
-        buffer[strlen(buffer)-1] = 0;
-    }
-    if (buffer[strlen(buffer)-1] == 13){
-        buffer[strlen(buffer)-1] = 0;
-    }
-  
-    if (strncmp(buffer, "b", 1) == 0){
-        printf("\nBusca");
-        strtok(buffer, " ");
+        if (strncmp(buffer, "b", 1) == 0){
+            printf("\nBusca");
+            strtok(buffer, " ");
 
-        consulta(strtok(NULL, " "), dadosPtr);
-    }
-    else if (strncmp(buffer, "i", 1) == 0){
-        printf("\nInsercao");
-    }    
-    else if (strncmp(buffer, "r", 1) == 0){
-        printf("\nRemocao");
-        
+            consulta(strtok(NULL, " "), dadosPtr);
+        }
+        else if (strncmp(buffer, "i", 1) == 0){
+            printf("\nInsercao");
+        }    
+        else if (strncmp(buffer, "r", 1) == 0){
+            printf("\nRemocao");
+            
+        }
+        memset(buffer, 0, TAM_MAX_REG+2);
+        comp_reg = strlen(fgets(buffer, TAM_MAX_REG+2, entrada));
     }
 
     fclose(entrada);
@@ -274,7 +290,7 @@ int executa_operacoes(char * arq){
 }
 
 int main (int argc, char *argv[]){
-    
+
     if (argc == 3 && strcmp(argv[1], "-i" ) == 0){
         printf("Modo de importacao ativado ... nome do arquivo = %s\n", argv[2]);
         importacao(argv[2]);
