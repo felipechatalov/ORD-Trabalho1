@@ -203,11 +203,8 @@ int importacao(char * arq){
     }
 
 
-    printf("\n%d", cabeca.ped);
     comp_reg = readRegister(buffer, TAM_MAX_REG, entrada);
-    printf("\n%d,   %s", comp_reg, buffer);
     snprintf(bufferCabecalho, sizeof(cabecalho), "%d", cabeca.ped);
-    printf("\n%s--%d", bufferCabecalho, bufferCabecalho);
     writeRegister(bufferCabecalho, sizeof(cabecalho), dadosPtr);
     do{
         writeRegister(buffer, TAM_MAX_REG, dadosPtr);
@@ -215,7 +212,6 @@ int importacao(char * arq){
         fseek(entrada, comp_reg, SEEK_SET);
         currentReg = readRegister(buffer, TAM_MAX_REG, entrada);
         comp_reg += currentReg;
-        printf("\n%d,   %s", currentReg, buffer);
     }while(currentReg != 0);
 
 
@@ -308,6 +304,7 @@ int main (int argc, char *argv[]){
         printf("Modo de impressao da PED ativado ...\n");
         FILE* arq = fopen("dados.dat", "r+");
         imprime_ped(arq);
+        fclose(arq);
     }
     
     else {
